@@ -1,0 +1,53 @@
+# Sample Knowledge Base
+# Replace this file with your own domain knowledge.
+# Format: plain text or Markdown. The RAG pipeline will chunk and embed this file.
+#
+# Tips:
+# - Use clear headings (## Section Name) to help chunking
+# - Keep related information together — each chunk should be self-contained
+# - Chunk size is configured in Flowise (recommended: 1500 chars, overlap: 200)
+# - After replacing this file, re-upload it in Flowise and re-index Qdrant
+
+---
+
+## About This Bot
+
+This is a WhatsApp RAG bot template. Replace this knowledge base with your own
+domain content — product FAQs, company policies, service documentation, etc.
+
+---
+
+## Example: Product FAQs
+
+**Q: What are your business hours?**
+A: We are open Monday to Friday, 9am to 5pm local time.
+
+**Q: How can I contact support?**
+A: You can reach our support team via WhatsApp (this bot) or email at support@example.com.
+
+**Q: How long does delivery take?**
+A: Standard delivery takes 3–5 business days. Express delivery is available for an
+additional fee and arrives within 1–2 business days.
+
+---
+
+## Example: Policies
+
+### Return Policy
+Items can be returned within 30 days of purchase. The item must be unused and in
+its original packaging. Refunds are processed within 5–7 business days.
+
+### Privacy Policy
+We collect only the information necessary to process your orders. Your data is
+never sold to third parties.
+
+---
+
+## Tips for Building Your Knowledge Base
+
+1. **Be specific** — vague answers lead to vague bot responses.
+2. **Use Q&A format** — it maps directly to how users ask questions.
+3. **Include edge cases** — what happens when something goes wrong?
+4. **Keep it updated** — stale knowledge leads to wrong answers.
+5. **Test with real user questions** — after indexing, try actual queries
+   and refine the content based on where the bot struggles.

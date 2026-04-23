@@ -1,0 +1,137 @@
+services:
+
+  # ── PostgreSQL (Evolution API database) ──────────────────────────────────────
+  evolution-postgres:
+    image: postgres:15
+    container_name: evolution-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-evolution}
+      POSTGRES_USER: ${POSTGRES_USER:-evolution}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-evolution_password}
+    volumes:
+      - evolution-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-evolution}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis (Evolution API session cache) ──────────────────────────────────────
+  evolution-redis:
+    image: redis:7-alpine
+    container_name: evolution-redis
+    restart: unless-stopped
+    volumes:
+      - evolution-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Evolution API (WhatsApp gateway) ─────────────────────────────────────────
+  evolution-api:
+    image: evoapicloud/evolution-api:v2.3.7
+    container_name: evolution-api
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      evolution-postgres:
+        condition: service_healthy
+      evolution-redis:
+        condition: service_healthy
+    environment:
+      # Server
+      SERVER_URL: http://${HOST_IP}:${EVOLUTION_PORT:-8081}
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
+      # Database
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://${POSTGRES_USER:-evolution}:${POSTGRES_PASSWORD:-evolution_password}@${HOST_IP}:5432/${POSTGRES_DB:-evolution}
+      # Redis
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://${HOST_IP}:6379
+      CACHE_REDIS_PREFIX_KEY: evolution
+      # Flowise native integration
+      FLOWISE_API_URL: http://${HOST_IP}:${FLOWISE_PORT:-3000}
+      FLOWISE_API_KEY: ${FLOWISE_API_KEY}
+    volumes:
+      - evolution-instances:/evolution/instances
+    ports:
+      - "${EVOLUTION_PORT:-8081}:8081"
+
+  # ── Flowise (RAG orchestration) ───────────────────────────────────────────────
+  flowise:
+    image: flowiseai/flowise:latest
+    container_name: flowise
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      PORT: ${FLOWISE_PORT:-3000}
+      FLOWISE_USERNAME: ${FLOWISE_USERNAME:-admin}
+      FLOWISE_PASSWORD: ${FLOWISE_PASSWORD:-flowise_password}
+      APIKEY_PATH: /root/.flowise
+      SECRETKEY_PATH: /root/.flowise
+      LOG_LEVEL: info
+    volumes:
+      - flowise-data:/root/.flowise
+    ports:
+      - "${FLOWISE_PORT:-3000}:3000"
+
+  # ── Qdrant (vector store) ─────────────────────────────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - qdrant-storage:/qdrant/storage:Z
+      - qdrant-snapshots:/qdrant/snapshots:Z
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+
+  # ── Ollama (embeddings + optional local LLM) ─────────────────────────────────
+  # Used for embeddings (bge-m3) by default.
+  # Can ALSO serve as the LLM backend — fully free, no API key needed.
+  # See README.md > "LLM Options" for local vs Groq setup.
+  #
+  # GPU support:
+  #   NVIDIA → uncomment the `deploy` block below
+  #   AMD    → set image to ollama/ollama:rocm and uncomment the devices block
+  #   CPU    → works as-is, but 1–8B models will be slow without a GPU
+  ollama:
+    image: ollama/ollama:latest      # swap for ollama/ollama:rocm on AMD
+    container_name: ollama
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      # NVIDIA: number of GPU layers to offload (default: all). Reduce if VRAM is tight.
+      # OLLAMA_NUM_GPU: "999"
+      # Increase context window if your knowledge base needs longer conversations
+      # OLLAMA_NUM_CTX: "4096"
+    volumes:
+      - ollama-models:/root/.ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    # ── NVIDIA GPU — uncomment this entire block ──────────────────────────────
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    # ── AMD GPU (ROCm) — uncomment this entire block ──────────────────────────
+    # devices:
+    #   - /dev/kfd
+    #   - /dev/dri
+
+volumes:
+  evolution-postgres-data:
+  evolution-redis-data:
+  evolution-instances:
+  flowise-data:
+  qdrant-storage:
+  qdrant-snapshots:
+  ollama-models:
