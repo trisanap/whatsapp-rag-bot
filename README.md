@@ -42,7 +42,7 @@ WhatsApp ──► Evolution API ──► Flowise ──► Qdrant (vector sear
 ### 1. Clone and configure
 
 ```bash
-git clone https://github.com/yourusername/whatsapp-rag-bot.git
+git clone https://github.com/trisanap/whatsapp-rag-bot.git
 cd whatsapp-rag-bot
 cp .env.example .env
 ```
